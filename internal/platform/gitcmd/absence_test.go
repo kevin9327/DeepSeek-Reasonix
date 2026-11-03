@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 // A folder git will not open is told apart from one git cannot be asked about.
@@ -45,6 +47,13 @@ func TestFirstLineIsOneBoundedPrintableLine(t *testing.T) {
 	}
 	if got := firstLine(long); len(got) != 160 {
 		t.Fatalf("len = %d, want 160", len(got))
+	}
+	// A localized message is cut on a rune boundary: 160 bytes fall inside the
+	// 54th three-byte character, which is dropped whole, not kept as a fragment.
+	localized := "致命错误：" + strings.Repeat("仓", 200)
+	got := firstLine([]byte(localized))
+	if !utf8.ValidString(got) || len(got) != 159 || !strings.HasPrefix(localized, got) {
+		t.Fatalf("firstLine(localized) = %q (len %d), want the first 53 characters, valid UTF-8", got, len(got))
 	}
 }
 

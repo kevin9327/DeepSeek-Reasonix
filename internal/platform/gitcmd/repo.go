@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 )
 
 // ErrNotRepository reports that a directory is not inside a git work tree, or
@@ -220,7 +221,12 @@ func firstLine(raw []byte) string {
 		return r
 	}, line)
 	if len(line) > 160 {
-		line = line[:160]
+		// Cut on a rune boundary: git may print localized, multi-byte messages.
+		cut := 160
+		for cut > 0 && !utf8.RuneStart(line[cut]) {
+			cut--
+		}
+		line = line[:cut]
 	}
 	return line
 }
