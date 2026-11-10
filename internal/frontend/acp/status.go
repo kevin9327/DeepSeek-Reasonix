@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"reasonix/internal/base/secrets"
 	"reasonix/internal/contract/event"
@@ -572,7 +573,12 @@ func clipStatusText(value string, limit int) string {
 	if len(value) <= limit {
 		return value
 	}
-	return value[:limit]
+	// Cut on a rune boundary so a multi-byte summary or error stays valid UTF-8.
+	cut := limit
+	for cut > 0 && !utf8.RuneStart(value[cut]) {
+		cut--
+	}
+	return value[:cut]
 }
 
 func redactStatusTexts(values []string, limit int) []string {

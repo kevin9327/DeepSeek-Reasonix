@@ -9,6 +9,7 @@ import (
 	"reasonix/internal/state/sessionstore"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"reasonix/internal/base/testenv"
 	"reasonix/internal/contract/event"
@@ -218,6 +219,21 @@ func TestStatusNormalizesPhaseAndRedactsPublicText(t *testing.T) {
 	}
 	if !strings.Contains(string(empty), `"risks":[]`) {
 		t.Fatalf("empty risks must encode as [], got %s", empty)
+	}
+}
+
+func TestStatusTextIsClippedOnACharacterBoundary(t *testing.T) {
+	// 1,000 three-byte characters: byte 2,048 falls inside the 683rd one.
+	reason := strings.Repeat("测", 1_000)
+	telemetry := newStatusTelemetry()
+	telemetry.beginTurn()
+	telemetry.finishTurn(errors.New(reason), false, "running", "")
+	got := telemetry.snapshot().turnOutcome.Reason
+	if !utf8.ValidString(got) {
+		t.Fatalf("clipped reason is not valid UTF-8: ends with % x", got[len(got)-4:])
+	}
+	if want := strings.Repeat("测", 682); got != want {
+		t.Fatalf("clipped reason has %d bytes, want the %d-byte prefix of whole characters", len(got), len(want))
 	}
 }
 
